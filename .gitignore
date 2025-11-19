@@ -1,0 +1,11 @@
+# Bỏ qua tất cả các thư mục node_modules
+node_modules/
+
+# Cụ thể hơn cho 2 thư mục con
+/backend/node_modules/
+/frontend/node_modules/
+
+# Bỏ qua các file .env (chứa mật khẩu, bí mật)
+.env
+/backend/.env
+/frontend/.env
