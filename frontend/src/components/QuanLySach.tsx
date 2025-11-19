@@ -1,123 +1,186 @@
-// FILE: frontend/src/components/QuanLySach.tsx
 import React, { useEffect, useState } from 'react';
-import { apiThuVien } from '../api/apiThuVien'; // Import file API đã tạo
+import { apiThuVien } from '../api/apiThuVien'; 
+import './QuanLySach.css';
 
-// Local type definition because 'Sach' is not exported from apiThuVien
 interface Sach {
   id: number;
   title: string;
   author: string;
+  category_id: number;
   ten_the_loai?: string;
-  available_quantity: number;
   total_quantity: number;
+  available_quantity: number;
+  published_year: number;
+}
+
+interface TheLoai {
+  id: number;
+  name: string;
 }
 
 const QuanLySach: React.FC = () => {
-  // 1. KHAI BÁO STATE (Biến lưu dữ liệu)
-  const [danhSachSach, setDanhSachSach] = useState<Sach[]>([]); // Lưu danh sách sách
-  const [dangTai, setDangTai] = useState<boolean>(false);       // Trạng thái loading
-  const [tuKhoa, setTuKhoa] = useState<string>('');             // Từ khóa tìm kiếm
+  const [danhSachSach, setDanhSachSach] = useState<Sach[]>([]); 
+  const [danhSachTheLoai, setDanhSachTheLoai] = useState<TheLoai[]>([]);
+  const [dangTai, setDangTai] = useState<boolean>(false);       
+  const [tuKhoa, setTuKhoa] = useState<string>('');             
+  
+  // Phân trang
+  const [trangHienTai, setTrangHienTai] = useState(1);
+  const [tongSoTrang, setTongSoTrang] = useState(1);
 
-  // 2. HÀM GỌI API (LOGIC)
+  // Modal (Thêm/Sửa)
+  const [hienModal, setHienModal] = useState(false);
+  const [dangSuaSach, setDangSuaSach] = useState<Sach | null>(null); 
+  const [formData, setFormData] = useState({
+    title: '', author: '', category_id: 0, total_quantity: 10, published_year: 2023
+  });
+
+  // Tải dữ liệu
   const layDuLieu = async () => {
     setDangTai(true);
     try {
-      // Gọi hàm từ file apiThuVien, truyền trang 1 và từ khóa
-      const ketQua = await apiThuVien.layDanhSachSach(1, tuKhoa);
-      setDanhSachSach(ketQua.duLieu);
+      const dataSach = await apiThuVien.layDanhSachSach(trangHienTai, tuKhoa);
+      setDanhSachSach(dataSach.duLieu || []);
+      setTongSoTrang(Math.ceil(dataSach.phanTrang.tongSoBanGhi / 10) || 1);
+
+      const dataTL = await apiThuVien.layDanhSachTheLoai();
+      setDanhSachTheLoai(dataTL);
     } catch (loi) {
-      console.error("Lỗi tải sách:", loi);
-      alert("Không tải được danh sách sách!");
+      console.error(loi);
     } finally {
       setDangTai(false);
     }
   };
 
-  // 3. USE EFFECT (Chạy 1 lần khi mở trang hoặc khi từ khóa thay đổi)
   useEffect(() => {
-    // Kỹ thuật Debounce (đợi ngưng gõ 500ms mới tìm) để đỡ lag server
-    const timeoutId = setTimeout(() => {
-      layDuLieu();
-    }, 500);
+    const timer = setTimeout(() => layDuLieu(), 300);
+    return () => clearTimeout(timer);
+  }, [trangHienTai, tuKhoa]);
 
-    return () => clearTimeout(timeoutId);
-  }, [tuKhoa]); // Khi 'tuKhoa' thay đổi thì chạy lại hàm này
+  // Xử lý Modal
+  const moModalThem = () => {
+    setDangSuaSach(null);
+    setFormData({ title: '', author: '', category_id: danhSachTheLoai[0]?.id || 0, total_quantity: 10, published_year: 2023 });
+    setHienModal(true);
+  };
 
-  // 4. HÀM XỬ LÝ SỰ KIỆN (User bấm nút)
-  const xuLyXoa = async (id: number) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa sách này không?")) {
-      try {
-        await apiThuVien.xoaSach(id);
-        alert("Đã xóa thành công!");
-        layDuLieu(); // Tải lại bảng sau khi xóa
-      } catch (loi) {
-        alert("Lỗi khi xóa sách!");
+  const moModalSua = (sach: Sach) => {
+    setDangSuaSach(sach);
+    setFormData({
+      title: sach.title, author: sach.author, category_id: sach.category_id,
+      total_quantity: sach.total_quantity, published_year: sach.published_year
+    });
+    setHienModal(true);
+  };
+
+  const luuDuLieu = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (dangSuaSach) {
+        await apiThuVien.capNhatSach(dangSuaSach.id, formData);
+        alert("Đã cập nhật!");
+      } else {
+        await apiThuVien.themSachMoi(formData);
+        alert("Đã thêm mới!");
       }
+      setHienModal(false);
+      layDuLieu();
+    } catch (e) { alert("Lỗi khi lưu!"); }
+  };
+
+  const xoaSach = async (id: number) => {
+    if (window.confirm("Chắc chắn xóa?")) {
+      await apiThuVien.xoaSach(id);
+      layDuLieu();
     }
   };
 
-  // 5. GIAO DIỆN (Render HTML)
   return (
-    <div className="quan-ly-sach-container" style={{ padding: '20px' }}>
-      <h2>Quản Lý Sách Thư Viện</h2>
-
-      {/* Ô Tìm kiếm */}
-      <div style={{ marginBottom: '20px' }}>
-        <input 
-          type="text" 
-          placeholder="Tìm theo tên sách hoặc tác giả..." 
-          value={tuKhoa}
-          onChange={(e) => setTuKhoa(e.target.value)}
-          style={{ padding: '8px', width: '300px' }}
-        />
+    <div className="quan-ly-sach-container">
+      <div className="header-actions">
+        <h2 style={{ color: '#0056b3' }}>Quản Lý Kho Sách</h2>
+        <button className="btn-add" onClick={moModalThem}>+ Thêm Sách</button>
       </div>
 
-      {/* Bảng dữ liệu */}
-      {dangTai ? (
-        <p>Đang tải dữ liệu...</p>
-      ) : (
-        <table border={1} cellPadding={10} style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f2f2f2' }}>
-              <th>ID</th>
-              <th>Tên Sách</th>
-              <th>Tác Giả</th>
-              <th>Thể Loại</th>
-              <th>Kho (Còn/Tổng)</th>
-              <th>Hành Động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {danhSachSach.length > 0 ? (
-              danhSachSach.map((sach) => (
-                <tr key={sach.id}>
-                  <td>{sach.id}</td>
-                  <td>{sach.title}</td>
-                  <td>{sach.author}</td>
-                  <td>{sach.ten_the_loai || 'Chưa cập nhật'}</td>
-                  <td>
-                    <span style={{ color: sach.available_quantity > 0 ? 'green' : 'red' }}>
-                      {sach.available_quantity}
-                    </span> 
-                    / {sach.total_quantity}
-                  </td>
-                  <td>
-                    <button onClick={() => xuLyXoa(sach.id)} style={{ color: 'red', cursor: 'pointer' }}>
-                      Xóa
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={6} style={{ textAlign: 'center' }}>Không tìm thấy sách nào</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'center' }}>
+        <input className="search-input" placeholder="🔍 Tìm tên sách, tác giả..." 
+               value={tuKhoa} onChange={e => setTuKhoa(e.target.value)} />
+      </div>
+
+      {dangTai ? <p>Đang tải...</p> : (
+        <div className="book-grid">
+          {danhSachSach.map((sach) => (
+            <div className="book-card" key={sach.id}>
+              <div className="book-image-wrapper">
+                 <img src={`https://picsum.photos/seed/${sach.id}/200/300`} className="book-cover" alt="cover"/>
+              </div>
+              <div className="book-info">
+                <div>
+                  <h3 className="book-title">{sach.title}</h3>
+                  <p style={{color:'#666', fontSize:14}}>✍️ {sach.author} ({sach.published_year})</p>
+                  <span style={{background:'#eee', padding:'2px 8px', borderRadius:4, fontSize:12}}>📂 {sach.ten_the_loai}</span>
+                </div>
+                <div className="book-stats">
+                   <b style={{color: sach.available_quantity > 0 ? 'green' : 'red'}}>
+                     Kho: {sach.available_quantity}/{sach.total_quantity}
+                   </b>
+                   <div>
+                      <button className="btn-edit" onClick={() => moModalSua(sach)}>Sửa</button>
+                      <button className="btn-delete" onClick={() => xoaSach(sach.id)}>Xóa</button>
+                   </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {}
+      <div className="pagination">
+        <button disabled={trangHienTai===1} onClick={() => setTrangHienTai(trangHienTai-1)}>Trước</button>
+        <span>Trang {trangHienTai}/{tongSoTrang}</span>
+        <button disabled={trangHienTai===tongSoTrang} onClick={() => setTrangHienTai(trangHienTai+1)}>Sau</button>
+      </div>
+
+      {/* Modal */}
+      {hienModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>{dangSuaSach ? 'Sửa Sách' : 'Thêm Sách Mới'}</h3>
+            <form onSubmit={luuDuLieu}>
+              <div className="form-group">
+                <label>Tên sách:</label>
+                <input required value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label>Tác giả:</label>
+                <input required value={formData.author} onChange={e=>setFormData({...formData, author: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label>Thể loại:</label>
+                <select value={formData.category_id} onChange={e=>setFormData({...formData, category_id: Number(e.target.value)})}>
+                   {danhSachTheLoai.map(tl => <option key={tl.id} value={tl.id}>{tl.name}</option>)}
+                </select>
+              </div>
+              <div style={{display:'flex', gap:10}}>
+                <div className="form-group" style={{flex:1}}>
+                  <label>Tổng số lượng:</label>
+                  <input type="number" required value={formData.total_quantity} onChange={e=>setFormData({...formData, total_quantity: Number(e.target.value)})} />
+                </div>
+                <div className="form-group" style={{flex:1}}>
+                  <label>Năm XB:</label>
+                  <input type="number" required value={formData.published_year} onChange={e=>setFormData({...formData, published_year: Number(e.target.value)})} />
+                </div>
+              </div>
+              <div className="modal-actions">
+                <button type="button" onClick={()=>setHienModal(false)} style={{background:'#6c757d', color:'white', border:'none', padding:'8px 15px', borderRadius:4}}>Hủy</button>
+                <button type="submit" style={{background:'#007bff', color:'white', border:'none', padding:'8px 15px', borderRadius:4}}>Lưu</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
 };
-
 export default QuanLySach;

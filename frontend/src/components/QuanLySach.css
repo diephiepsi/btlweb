@@ -1,0 +1,44 @@
+
+.quan-ly-sach-container {
+  padding: 20px; background-color: #f8f9fa; min-height: 100vh;
+}
+.header-actions {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+}
+.search-input {
+  width: 100%; max-width: 400px; padding: 10px 15px;
+  border: 1px solid #ddd; border-radius: 25px; outline: none;
+}
+
+.book-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 20px;
+}
+.book-card {
+  background: white; border-radius: 10px; overflow: hidden; display: flex;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: transform 0.2s;
+}
+.book-card:hover { transform: translateY(-5px); }
+.book-image-wrapper {
+  width: 120px; background: #007bff; display: flex; align-items: center; justify-content: center;
+}
+.book-cover { width: 80px; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
+.book-info { padding: 15px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.book-title { margin: 0 0 5px; font-size: 18px; color: #333; }
+.book-stats { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+
+.btn-add { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+.btn-edit { background: #ffc107; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px; }
+.btn-delete { background: #fff; color: #dc3545; border: 1px solid #dc3545; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+.btn-delete:hover { background: #dc3545; color: white; }
+
+.pagination { display: flex; justify-content: center; gap: 10px; margin-top: 30px; }
+.pagination button { padding: 8px 15px; cursor: pointer; }
+
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;
+}
+.modal-content { background: white; padding: 25px; border-radius: 8px; width: 500px; }
+.form-group { margin-bottom: 15px; display: flex; flex-direction: column; }
+.form-group input, .form-group select { padding: 10px; border: 1px solid #ccc; border-radius: 4px; margin-top: 5px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
